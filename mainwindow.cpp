@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <cmath> // Para funções trigonométricas e M_PI
+#include <cmath>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -8,7 +8,6 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // --- Popula o Display File com objetos iniciais ---
     ObjetoGrafico ponto1;
     ponto1.nome = "Ponto";
     ponto1.tipo = TipoObjeto::PONTO;
@@ -28,8 +27,6 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-// --- SLOTS PARA POLÍGONOS REGULARES ---
-
 void MainWindow::on_pushButton_desenhar_clicked()
 {
     int numLados = ui->spinBox_lados->value();
@@ -43,53 +40,41 @@ void MainWindow::on_pushButton_desenhar_clicked()
 
 void MainWindow::on_pushButton_apagar_clicked()
 {
-    // Limpa os objetos desenhados
     displayFile.clear();
-    // Limpa a lista de pontos manuais e a interface
     pontosManuais.clear();
     ui->listWidget_pontos->clear();
-    // Pede para redesenhar a tela vazia
     update();
 }
 
-// --- SLOTS PARA DESENHO MANUAL ---
-
 void MainWindow::on_pushButton_adicionar_ponto_clicked()
 {
-    // 1. Pega as coordenadas X e Y dos SpinBoxes
     int x = ui->spinBox_manual_x->value();
     int y = ui->spinBox_manual_y->value();
     QPoint novoPonto(x, y);
 
-    // 2. Adiciona o ponto à nossa lista temporária
     pontosManuais.append(novoPonto);
 
-    // 3. Mostra o ponto adicionado na interface para o usuário
+
     QString textoPonto = QString("Ponto %1: (%2, %3)").arg(pontosManuais.size()).arg(x).arg(y);
     ui->listWidget_pontos->addItem(textoPonto);
 }
 
 void MainWindow::on_pushButton_desenhar_manual_clicked()
 {
-    // 1. Verifica se há pontos suficientes para desenhar algo
     if (pontosManuais.size() < 2) {
-        return; // Não faz nada se tiver menos de 2 pontos
+        return;
     }
 
-    // 2. Cria um novo objeto gráfico
     ObjetoGrafico novaForma;
     novaForma.nome = "Forma Manual";
-    novaForma.tipo = TipoObjeto::POLIGONO; // Trata como polígono para ligar todos os pontos
-    novaForma.pontos = pontosManuais; // Copia os pontos da lista temporária
+    novaForma.tipo = TipoObjeto::POLIGONO;
+    novaForma.pontos = pontosManuais;
 
-    // 3. Adiciona a nova forma ao Display File para ser desenhada
     displayFile.append(novaForma);
 
-    // 4. Limpa a lista temporária e a interface para o próximo desenho
     pontosManuais.clear();
     ui->listWidget_pontos->clear();
 
-    // 5. Pede para a janela se redesenhar
     update();
 }
 
@@ -100,7 +85,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
     QPainter painter(this);
-    painter.setPen(QPen(Qt::cyan, 2));
+    painter.setPen(QPen(Qt::black, 2));
 
     for (const auto &objeto : displayFile) {
         switch (objeto.tipo) {
@@ -122,8 +107,6 @@ void MainWindow::paintEvent(QPaintEvent *event)
         }
     }
 }
-
-// --- FUNÇÕES AUXILIARES ---
 
 void MainWindow::desenharPonto(QPainter &painter, const QPoint &p)
 {
