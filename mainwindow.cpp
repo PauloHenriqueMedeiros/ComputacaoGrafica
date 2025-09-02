@@ -120,7 +120,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     painter.setClipRect(canvasRect);
     painter.translate(canvasRect.topLeft());
 
-    painter.setPen(QPen(Qt::cyan, 2));
+    painter.setPen(QPen(Qt::black, 2));
     for (const auto &objeto : displayFile) {
         if (!objeto.visivel) continue;
         if (objeto.tipo == TipoObjeto::POLIGONO && objeto.pontos.size() >= 2) {
