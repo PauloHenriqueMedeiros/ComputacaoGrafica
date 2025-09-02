@@ -6,14 +6,13 @@
 #include <QString>
 #include <QPoint>
 #include <QPainter>
-
-#include <QPushButton>
-#include <QSpinBox>
 #include <QListWidget>
+
+// QResizeEvent não é necessário nesta versão
+// #include <QResizeEvent>
 
 enum class TipoObjeto {
     PONTO,
-    RETA,
     POLIGONO
 };
 
@@ -21,6 +20,7 @@ struct ObjetoGrafico {
     QString nome;
     TipoObjeto tipo;
     QList<QPoint> pontos;
+    bool visivel;
 };
 
 QT_BEGIN_NAMESPACE
@@ -39,23 +39,22 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private slots:
-    void on_pushButton_desenhar_clicked();
-    void on_pushButton_apagar_clicked();
-
     void on_pushButton_adicionar_ponto_clicked();
-    void on_pushButton_desenhar_manual_clicked();
+    void on_pushButton_finalizar_objeto_clicked();
+    void on_pushButton_apagar_tudo_clicked();
+    void on_listWidget_objetos_itemChanged(QListWidgetItem *item);
 
 private:
     Ui::MainWindow *ui;
-
     QList<ObjetoGrafico> displayFile;
-
-
     QList<QPoint> pontosManuais;
 
+    // As funções resizeEvent e atualizarLimitesSpinBox foram removidas
+    // por não serem mais necessárias com QLineEdit.
+
+    // Funções de desenho
     void desenharPonto(QPainter &painter, const QPoint &p);
     void desenharReta(QPainter &painter, const QPoint &p1, const QPoint &p2);
     void desenharPoligono(QPainter &painter, const QList<QPoint> &pontos);
-    ObjetoGrafico criarPoligonoRegular(int numLados, const QPoint &centro, int raio, const QString &nome);
 };
-#endif
+#endif // MAINWINDOW_H
