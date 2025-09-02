@@ -20,32 +20,27 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-// As funções resizeEvent e atualizarLimitesSpinBox foram completamente removidas.
 
 void MainWindow::on_pushButton_adicionar_ponto_clicked()
 {
-    // Pega o texto dos LineEdits
     QString textoX = ui->lineEdit_manual_x->text();
     QString textoY = ui->lineEdit_manual_y->text();
 
     bool conversaoOkX, conversaoOkY;
-    // Tenta converter o texto para inteiro
+
     int x = textoX.toInt(&conversaoOkX);
     int y = textoY.toInt(&conversaoOkY);
 
-    // Validação Passo 1: Verifica se a conversão funcionou (se eram números)
     if (!conversaoOkX || !conversaoOkY) {
         QMessageBox::warning(this, "Erro de Entrada", "Por favor, insira apenas números inteiros válidos nas coordenadas.");
         return;
     }
 
-    // Validação Passo 2: Verifica se os números são positivos (>= 0)
     if (x < 0 || y < 0) {
         QMessageBox::warning(this, "Erro de Entrada", "As coordenadas devem ser números positivos (maiores ou iguais a zero).");
         return;
     }
 
-    // Validação Passo 3: Verifica se as coordenadas estão dentro dos limites do canvas
     int canvasWidth = ui->canvasWidget->width();
     int canvasHeight = ui->canvasWidget->height();
     if (x >= canvasWidth || y >= canvasHeight) {
@@ -56,7 +51,6 @@ void MainWindow::on_pushButton_adicionar_ponto_clicked()
         return;
     }
 
-    // Se tudo estiver correto, adiciona o ponto
     QPoint novoPonto(x, y);
     pontosManuais.append(novoPonto);
 
@@ -116,7 +110,6 @@ void MainWindow::on_listWidget_objetos_itemChanged(QListWidgetItem *item)
     update();
 }
 
-// --- LÓGICA DE DESENHO ---
 
 void MainWindow::paintEvent(QPaintEvent *event)
 {
@@ -152,7 +145,6 @@ void MainWindow::paintEvent(QPaintEvent *event)
     }
 }
 
-// --- FUNÇÕES AUXILIARES ---
 
 void MainWindow::desenharPonto(QPainter &painter, const QPoint &p) {
     painter.drawPoint(p);

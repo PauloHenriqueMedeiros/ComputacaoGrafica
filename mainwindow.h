@@ -8,9 +8,6 @@
 #include <QPainter>
 #include <QListWidget>
 
-// QResizeEvent não é necessário nesta versão
-// #include <QResizeEvent>
-
 enum class TipoObjeto {
     PONTO,
     POLIGONO
@@ -49,12 +46,9 @@ private:
     QList<ObjetoGrafico> displayFile;
     QList<QPoint> pontosManuais;
 
-    // As funções resizeEvent e atualizarLimitesSpinBox foram removidas
-    // por não serem mais necessárias com QLineEdit.
 
-    // Funções de desenho
     void desenharPonto(QPainter &painter, const QPoint &p);
     void desenharReta(QPainter &painter, const QPoint &p1, const QPoint &p2);
     void desenharPoligono(QPainter &painter, const QList<QPoint> &pontos);
 };
-#endif // MAINWINDOW_H
+#endif
