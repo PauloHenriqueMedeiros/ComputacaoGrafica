@@ -39,22 +39,26 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
     namespace QMC = QtMocConstants;
     QtMocHelpers::StringRefStorage qt_stringData {
         "MainWindow",
-        "on_pushButton_desenhar_clicked",
-        "",
-        "on_pushButton_apagar_clicked",
         "on_pushButton_adicionar_ponto_clicked",
-        "on_pushButton_desenhar_manual_clicked"
+        "",
+        "on_pushButton_finalizar_objeto_clicked",
+        "on_pushButton_apagar_tudo_clicked",
+        "on_listWidget_objetos_itemChanged",
+        "QListWidgetItem*",
+        "item"
     };
 
     QtMocHelpers::UintData qt_methods {
-        // Slot 'on_pushButton_desenhar_clicked'
-        QtMocHelpers::SlotData<void()>(1, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'on_pushButton_apagar_clicked'
-        QtMocHelpers::SlotData<void()>(3, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'on_pushButton_adicionar_ponto_clicked'
+        QtMocHelpers::SlotData<void()>(1, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'on_pushButton_finalizar_objeto_clicked'
+        QtMocHelpers::SlotData<void()>(3, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'on_pushButton_apagar_tudo_clicked'
         QtMocHelpers::SlotData<void()>(4, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'on_pushButton_desenhar_manual_clicked'
-        QtMocHelpers::SlotData<void()>(5, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'on_listWidget_objetos_itemChanged'
+        QtMocHelpers::SlotData<void(QListWidgetItem *)>(5, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 6, 7 },
+        }}),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -78,14 +82,13 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
     auto *_t = static_cast<MainWindow *>(_o);
     if (_c == QMetaObject::InvokeMetaMethod) {
         switch (_id) {
-        case 0: _t->on_pushButton_desenhar_clicked(); break;
-        case 1: _t->on_pushButton_apagar_clicked(); break;
-        case 2: _t->on_pushButton_adicionar_ponto_clicked(); break;
-        case 3: _t->on_pushButton_desenhar_manual_clicked(); break;
+        case 0: _t->on_pushButton_adicionar_ponto_clicked(); break;
+        case 1: _t->on_pushButton_finalizar_objeto_clicked(); break;
+        case 2: _t->on_pushButton_apagar_tudo_clicked(); break;
+        case 3: _t->on_listWidget_objetos_itemChanged((*reinterpret_cast< std::add_pointer_t<QListWidgetItem*>>(_a[1]))); break;
         default: ;
         }
     }
-    (void)_a;
 }
 
 const QMetaObject *MainWindow::metaObject() const
