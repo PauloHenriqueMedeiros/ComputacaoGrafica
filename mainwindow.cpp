@@ -72,19 +72,27 @@ void MainWindow::on_pushButton_finalizar_objeto_clicked()
     if (ok && !nomeObjeto.isEmpty()) {
         ObjetoGrafico novoObjeto;
         novoObjeto.nome = nomeObjeto;
-        if(pontosManuais.size() == 1) {
+        QString tipoString;
+
+        if (pontosManuais.size() == 1) {
             novoObjeto.tipo = TipoObjeto::PONTO;
+            tipoString = "Ponto";
+        } else if (pontosManuais.size() == 2) {
+            novoObjeto.tipo = TipoObjeto::RETA;
+            tipoString = "Reta";
         } else {
             novoObjeto.tipo = TipoObjeto::POLIGONO;
+            tipoString = "Polígono";
         }
+
         novoObjeto.pontos = pontosManuais;
         novoObjeto.visivel = true;
         displayFile.append(novoObjeto);
 
-        QListWidgetItem* item = new QListWidgetItem(nomeObjeto, ui->listWidget_objetos);
+        QString itemText = QString("%1 (%2)").arg(nomeObjeto, tipoString);
+        QListWidgetItem* item = new QListWidgetItem(itemText, ui->listWidget_objetos);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
         item->setCheckState(Qt::Checked);
-        ui->listWidget_objetos->addItem(item);
     }
 
     pontosManuais.clear();
@@ -110,7 +118,6 @@ void MainWindow::on_listWidget_objetos_itemChanged(QListWidgetItem *item)
     update();
 }
 
-
 void MainWindow::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
@@ -121,14 +128,24 @@ void MainWindow::paintEvent(QPaintEvent *event)
     painter.translate(canvasRect.topLeft());
 
     painter.setPen(QPen(Qt::black, 2));
+
     for (const auto &objeto : displayFile) {
         if (!objeto.visivel) continue;
-        if (objeto.tipo == TipoObjeto::POLIGONO && objeto.pontos.size() >= 2) {
-            desenharPoligono(painter, objeto.pontos);
-        } else if (objeto.tipo == TipoObjeto::PONTO && !objeto.pontos.isEmpty()) {
-            for(const QPoint &p : objeto.pontos) {
-                desenharPonto(painter, p);
+
+        switch(objeto.tipo) {
+        case TipoObjeto::PONTO:
+            if (!objeto.pontos.isEmpty()) {
+                desenharPonto(painter, objeto.pontos.first());
             }
+            break;
+        case TipoObjeto::RETA:
+            if (objeto.pontos.size() == 2) {
+                desenharReta(painter, objeto.pontos[0], objeto.pontos[1]);
+            }
+            break;
+        case TipoObjeto::POLIGONO:
+            desenharPoligono(painter, objeto.pontos);
+            break;
         }
     }
 
@@ -167,5 +184,7 @@ void MainWindow::desenharPoligono(QPainter &painter, const QList<QPoint> &pontos
     for (int i = 0; i < pontos.size() - 1; ++i) {
         desenharReta(painter, pontos[i], pontos[i+1]);
     }
-    desenharReta(painter, pontos.last(), pontos.first());
+    if (pontos.size() > 2) {
+        desenharReta(painter, pontos.last(), pontos.first());
+    }
 }

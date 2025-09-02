@@ -10,6 +10,7 @@
 
 enum class TipoObjeto {
     PONTO,
+    RETA,
     POLIGONO
 };
 
