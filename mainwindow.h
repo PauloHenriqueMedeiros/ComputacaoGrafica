@@ -2,37 +2,20 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-<<<<<<< HEAD
 #include <QVector>
 #include <QListWidgetItem>
 #include <QFileDialog>
 #include <QTextStream>
 #include <QRegularExpression>
 #include <QShowEvent>
+#include <QKeyEvent>
+#include <QMouseEvent>
+#include <QWheelEvent>
+
 #include "objetografico.h"
 #include "transformador.h"
 #include "windowgrafica.h"
 #include "clipping.h"
-=======
-#include <QList>
-#include <QString>
-#include <QPoint>
-#include <QPainter>
-#include <QListWidget>
-
-enum class TipoObjeto {
-    PONTO,
-    RETA,
-    POLIGONO
-};
-
-struct ObjetoGrafico {
-    QString nome;
-    TipoObjeto tipo;
-    QList<QPoint> pontos;
-    bool visivel;
-};
->>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -49,6 +32,13 @@ public:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void showEvent(QShowEvent *event) override;
+
+    // Eventos de Input
+    void keyPressEvent(QKeyEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
 
 private slots:
     void on_pushButton_transladar_clicked();
@@ -72,8 +62,14 @@ private:
     WindowGrafica* a_window;
     Clipping* clipper;
 
-    double camAnguloX = 0.0;
-    double camAnguloY = 0.0;
-    double camAnguloZ = 0.0;
+    // --- Variáveis da Câmera Orbital ---
+    double orbitDistancia; // Distância da câmera ao ponto de foco (Zoom)
+    double orbitRotX;      // Rotação Vertical (Pitch)
+    double orbitRotY;      // Rotação Horizontal (Yaw)
+    Ponto cameraFoco;      // O ponto central para onde a câmera olha
+
+    // --- Variáveis do Mouse ---
+    QPoint lastMousePos;
+    bool isDragging;
 };
 #endif // MAINWINDOW_H

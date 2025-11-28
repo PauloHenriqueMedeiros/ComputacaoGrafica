@@ -6,6 +6,11 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <algorithm>
+#include <cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -13,6 +18,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     connect(ui->listWidget_objetos, &QListWidget::itemChanged, this, &MainWindow::on_listWidget_objetos_itemChanged);
 
+    connect(ui->listWidget_objetos, &QListWidget::itemClicked, this, [this](QListWidgetItem* item){
+        this->setFocus();
+    });
+
+    // Configuração inicial da Window
     double w_xmin_default = -250.0;
     double w_ymin_default = -250.0;
     double w_zmin_default = -150.0;
@@ -35,6 +45,15 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_w_ymax->setText(QString::number(w_ymax_default));
     ui->lineEdit_zmin->setText(QString::number(w_zmin_default));
     ui->lineEdit_zmax->setText(QString::number(w_zmax_default));
+
+    // --- Inicialização da Câmera Orbital ---
+    orbitDistancia = 600.0;
+    orbitRotX = 20.0;
+    orbitRotY = 0.0;
+    cameraFoco = Ponto(0, 0, 0);
+
+    isDragging = false;
+    this->setFocusPolicy(Qt::StrongFocus);
 
     atualizarListaObjetos();
 }
@@ -73,80 +92,183 @@ void MainWindow::setupViewport() {
     update();
 }
 
-<<<<<<< HEAD
 void MainWindow::atualizarListaObjetos() {
     ui->listWidget_objetos->blockSignals(true);
     ui->listWidget_objetos->clear();
     for (ObjetoGrafico* obj : displayFile) {
         QListWidgetItem* item = new QListWidgetItem();
         item->setText(QString("%1 (%2)").arg(obj->getNome()).arg(tipoParaString(obj->getTipo())));
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
         item->setCheckState(obj->isVisivel() ? Qt::Checked : Qt::Unchecked);
         ui->listWidget_objetos->addItem(item);
-=======
-void MainWindow::on_pushButton_finalizar_objeto_clicked()
-{
-    if (pontosManuais.isEmpty()) {
-        QMessageBox::warning(this, "Aviso", "Nenhum ponto foi adicionado à lista de preparação.");
-        return;
-    }
-
-    bool ok;
-    QString nomeObjeto = QInputDialog::getText(this, "Finalizar Objeto", "Nome do objeto:", QLineEdit::Normal, "Meu Objeto", &ok);
-
-    if (ok && !nomeObjeto.isEmpty()) {
-        ObjetoGrafico novoObjeto;
-        novoObjeto.nome = nomeObjeto;
-        QString tipoString;
-
-        if (pontosManuais.size() == 1) {
-            novoObjeto.tipo = TipoObjeto::PONTO;
-            tipoString = "Ponto";
-        } else if (pontosManuais.size() == 2) {
-            novoObjeto.tipo = TipoObjeto::RETA;
-            tipoString = "Reta";
-        } else {
-            novoObjeto.tipo = TipoObjeto::POLIGONO;
-            tipoString = "Polígono";
-        }
-
-        novoObjeto.pontos = pontosManuais;
-        novoObjeto.visivel = true;
-        displayFile.append(novoObjeto);
-
-        QString itemText = QString("%1 (%2)").arg(nomeObjeto, tipoString);
-        QListWidgetItem* item = new QListWidgetItem(itemText, ui->listWidget_objetos);
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-        item->setCheckState(Qt::Checked);
->>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
     }
     ui->listWidget_objetos->blockSignals(false);
 }
 
-<<<<<<< HEAD
+// --------------------------------------------------------------------------------
+// CONTROLES MOUSE (Lógica Atualizada)
+// --------------------------------------------------------------------------------
+
+void MainWindow::mousePressEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton || event->button() == Qt::RightButton) {
+        lastMousePos = event->pos();
+        isDragging = true;
+        this->setFocus();
+    }
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent *event) {
+    if (!isDragging) return;
+
+    double dx = event->x() - lastMousePos.x();
+    double dy = event->y() - lastMousePos.y();
+    double sensitivity = 0.5;
+
+    // ====================================================================
+    // MODO MODIFICADOR: CTRL PRESSIONADO (Manipulação do Objeto)
+    // ====================================================================
+    if (event->modifiers() & Qt::ControlModifier) {
+
+        int index = ui->listWidget_objetos->currentRow();
+
+        // Só executa se tiver um objeto válido selecionado
+        if (index > 0 && index < displayFile.size()) {
+            ObjetoGrafico* obj = displayFile[index];
+
+            // --- CTRL + BOTÃO ESQUERDO: TRANSLADAR (MOVER) ---
+            if (event->buttons() & Qt::LeftButton) {
+
+                // Precisamos mover o objeto relativo à rotação da câmera (orbitRotY)
+                // Se a câmera girou, "Direita" no mouse não é mais X no mundo.
+
+                double radY = orbitRotY * M_PI / 180.0;
+                double cosY = cos(radY); // Eixo X da Câmera (Right)
+                double sinY = sin(radY); // Eixo Z da Câmera (Forward/Back)
+
+                // Cálculo da Translação no Mundo:
+                // Mouse DX move ao longo do vetor "Direita" da câmera
+                // Mouse DY move ao longo do vetor "Cima" do mundo (Y)
+
+                // sensitivity * 2.0 para ficar mais ágil o movimento
+                double moveSpeed = 2.0;
+
+                double transX = dx * moveSpeed * cosY;  // Move no plano com base no ângulo
+                double transZ = dx * moveSpeed * sinY;  // Move no plano com base no ângulo
+                double transY = -dy * moveSpeed;        // Invertido: Mouse pra baixo = Y diminui
+
+                obj->aplicarTransformacao(Matrix::criarMatrizTranslacao(transX, transY, transZ));
+            }
+        }
+    }
+
+    // ====================================================================
+    // MODO PADRÃO: SEM MODIFICADORES
+    // ====================================================================
+    else {
+        // --- BOTÃO ESQUERDO: GIRA CÂMERA ---
+        if (event->buttons() & Qt::LeftButton) {
+            orbitRotY += dx * sensitivity;
+            orbitRotX += dy * sensitivity;
+
+            if (orbitRotX > 90.0) orbitRotX = 90.0;
+            if (orbitRotX < -90.0) orbitRotX = -90.0;
+        }
+
+        // --- BOTÃO DIREITO: GIRA OBJETO SELECIONADO (Local) ---
+        else if (event->buttons() & Qt::RightButton) {
+            int index = ui->listWidget_objetos->currentRow();
+            if (index > 0 && index < displayFile.size()) {
+                ObjetoGrafico* obj = displayFile[index];
+
+                Ponto centro = obj->calcularCentro();
+                Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY(), -centro.getZ());
+                Matrix RotY = Matrix::criarMatrizRotacaoY(dx * sensitivity);
+                Matrix RotX = Matrix::criarMatrizRotacaoX(dy * sensitivity);
+                Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY(), centro.getZ());
+
+                obj->aplicarTransformacao(T2 * RotX * RotY * T1);
+            }
+        }
+    }
+
+    lastMousePos = event->pos();
+    update();
+}
+
+void MainWindow::mouseReleaseEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton || event->button() == Qt::RightButton) {
+        isDragging = false;
+    }
+}
+
+// --- SCROLL: ZOOM (Sem Ctrl) / ESCALA (Com Ctrl) ---
+void MainWindow::wheelEvent(QWheelEvent *event) {
+
+    if (event->modifiers() & Qt::ControlModifier) {
+        // MODO ESCALA (CTRL + SCROLL)
+        int index = ui->listWidget_objetos->currentRow();
+        if (index > 0 && index < displayFile.size()) {
+            ObjetoGrafico* obj = displayFile[index];
+            double scaleFactor = (event->angleDelta().y() > 0) ? 1.1 : 0.9;
+
+            Ponto centro = obj->calcularCentro();
+            Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY(), -centro.getZ());
+            Matrix S = Matrix::criarMatrizEscala(scaleFactor, scaleFactor, scaleFactor);
+            Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY(), centro.getZ());
+
+            obj->aplicarTransformacao(T2 * S * T1);
+            update();
+        }
+    } else {
+        // MODO ZOOM CÂMERA (APENAS SCROLL)
+        double delta = (event->angleDelta().y() > 0) ? -50.0 : 50.0;
+        orbitDistancia += delta;
+        if (orbitDistancia < 10.0) orbitDistancia = 10.0;
+        update();
+    }
+}
+
+void MainWindow::keyPressEvent(QKeyEvent *event) {
+    double velocidade = 15.0;
+    double radY = orbitRotY * M_PI / 180.0;
+    double sinY = sin(radY);
+    double cosY = cos(radY);
+
+    switch (event->key()) {
+    case Qt::Key_W:
+        cameraFoco.setX(cameraFoco.getX() + sinY * velocidade);
+        cameraFoco.setZ(cameraFoco.getZ() - cosY * velocidade);
+        break;
+    case Qt::Key_S:
+        cameraFoco.setX(cameraFoco.getX() - sinY * velocidade);
+        cameraFoco.setZ(cameraFoco.getZ() + cosY * velocidade);
+        break;
+    case Qt::Key_D:
+        cameraFoco.setX(cameraFoco.getX() + cosY * velocidade);
+        cameraFoco.setZ(cameraFoco.getZ() + sinY * velocidade);
+        break;
+    case Qt::Key_A:
+        cameraFoco.setX(cameraFoco.getX() - cosY * velocidade);
+        cameraFoco.setZ(cameraFoco.getZ() - sinY * velocidade);
+        break;
+    case Qt::Key_Space:
+        cameraFoco.setY(cameraFoco.getY() + velocidade);
+        break;
+    case Qt::Key_Shift:
+        cameraFoco.setY(cameraFoco.getY() - velocidade);
+        break;
+    default:
+        QMainWindow::keyPressEvent(event);
+        return;
+    }
+    update();
+}
+
+// --------------------------------------------------------------------------------
+// RENDERIZAÇÃO
+// --------------------------------------------------------------------------------
+
 void MainWindow::paintEvent(QPaintEvent *event) {
-=======
-void MainWindow::on_pushButton_apagar_tudo_clicked()
-{
-    displayFile.clear();
-    pontosManuais.clear();
-    ui->listWidget_objetos->clear();
-    ui->listWidget_pontos_atuais->clear();
-    update();
-}
-
-void MainWindow::on_listWidget_objetos_itemChanged(QListWidgetItem *item)
-{
-    int index = ui->listWidget_objetos->row(item);
-    if (index < 0 || index >= displayFile.size()) return;
-    bool isChecked = (item->checkState() == Qt::Checked);
-    displayFile[index].visivel = isChecked;
-    update();
-}
-
-void MainWindow::paintEvent(QPaintEvent *event)
-{
->>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
@@ -154,7 +276,6 @@ void MainWindow::paintEvent(QPaintEvent *event)
     painter.setClipRect(ui->canvasWidget->geometry());
     painter.fillRect(ui->canvasWidget->geometry(), Qt::black);
 
-<<<<<<< HEAD
     int v_xmin = ui->lineEdit_v_xmin->text().toInt();
     int v_ymin = ui->lineEdit_v_ymin->text().toInt();
     int v_xmax = ui->lineEdit_v_xmax->text().toInt();
@@ -162,7 +283,6 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
     double viewportWidth = v_xmax - v_xmin;
     double viewportHeight = v_ymax - v_ymin;
-
     if (viewportWidth <= 0) viewportWidth = 1;
     if (viewportHeight <= 0) viewportHeight = 1;
     double aspect = viewportWidth / viewportHeight;
@@ -170,15 +290,12 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
     LimitesWindow limites3D = a_window->getLimites();
 
-    double centroX = (limites3D.xmin + limites3D.xmax) / 2.0;
-    double centroY = (limites3D.ymin + limites3D.ymax) / 2.0;
-    double centroZ = (limites3D.zmin + limites3D.zmax) / 2.0;
-    double distanciaCamera = 650.0;
-    Matrix T_trans_centro = Matrix::criarMatrizTranslacao(-centroX, -centroY, -centroZ);
-    Matrix T_trans_dist = Matrix::criarMatrizTranslacao(0, 0, -distanciaCamera);
-    Matrix T_rot_cam = Matrix::criarMatrizRotacaoY(camAnguloY) * Matrix::criarMatrizRotacaoX(camAnguloX) * Matrix::criarMatrizRotacaoZ(camAnguloZ);
-    Matrix T_view = T_rot_cam * T_trans_dist * T_trans_centro;
-    Matrix T_proj = Matrix::criarMatrizProjecaoPerspectiva(45.0, aspect, 0.1, 5000.0);
+    // Matrizes
+    Matrix T_pan = Matrix::criarMatrizTranslacao(-cameraFoco.getX(), -cameraFoco.getY(), -cameraFoco.getZ());
+    Matrix T_rot = Matrix::criarMatrizRotacaoX(orbitRotX) * Matrix::criarMatrizRotacaoY(orbitRotY);
+    Matrix T_zoom = Matrix::criarMatrizTranslacao(0, 0, -orbitDistancia);
+    Matrix T_view = T_zoom * T_rot * T_pan;
+    Matrix T_proj = Matrix::criarMatrizProjecaoPerspectiva(60.0, aspect, 10.0, 5000.0);
     Matrix T_final = T_proj * T_view;
 
     auto desenharPoligono3D = [&](const QVector<Ponto>& vertices, const QBrush& brush) {
@@ -192,36 +309,17 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
             double x_ndc = p_clip.at(0, 0) / w;
             double y_ndc = p_clip.at(1, 0) / w;
+
             double x_tela = (x_ndc + 1.0) / 2.0 * viewportWidth + v_xmin;
             double y_tela = (1.0 - y_ndc) / 2.0 * viewportHeight + v_ymin;
             poligono_tela << QPointF(x_tela, y_tela);
-=======
-    painter.setPen(QPen(Qt::black, 2));
-
-    for (const auto &objeto : displayFile) {
-        if (!objeto.visivel) continue;
-
-        switch(objeto.tipo) {
-        case TipoObjeto::PONTO:
-            if (!objeto.pontos.isEmpty()) {
-                desenharPonto(painter, objeto.pontos.first());
-            }
-            break;
-        case TipoObjeto::RETA:
-            if (objeto.pontos.size() == 2) {
-                desenharReta(painter, objeto.pontos[0], objeto.pontos[1]);
-            }
-            break;
-        case TipoObjeto::POLIGONO:
-            desenharPoligono(painter, objeto.pontos);
-            break;
->>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
         }
         painter.setBrush(brush);
         painter.setPen(Qt::NoPen);
         painter.drawPolygon(poligono_tela);
     };
 
+    // Cenário
     QVector<Ponto> vertices_caixa;
     vertices_caixa.append(Ponto(limites3D.xmin, limites3D.ymin, limites3D.zmin));
     vertices_caixa.append(Ponto(limites3D.xmax, limites3D.ymin, limites3D.zmin));
@@ -232,22 +330,27 @@ void MainWindow::paintEvent(QPaintEvent *event)
     vertices_caixa.append(Ponto(limites3D.xmax, limites3D.ymax, limites3D.zmax));
     vertices_caixa.append(Ponto(limites3D.xmin, limites3D.ymax, limites3D.zmax));
 
-    QVector<Ponto> face_fundo = {vertices_caixa[4], vertices_caixa[5], vertices_caixa[6], vertices_caixa[7]};
-    QVector<Ponto> face_chao = {vertices_caixa[0], vertices_caixa[1], vertices_caixa[5], vertices_caixa[4]};
-    QVector<Ponto> face_teto = {vertices_caixa[3], vertices_caixa[2], vertices_caixa[6], vertices_caixa[7]};
+    QVector<Ponto> face_chao     = {vertices_caixa[0], vertices_caixa[1], vertices_caixa[5], vertices_caixa[4]};
+    QVector<Ponto> face_fundo    = {vertices_caixa[4], vertices_caixa[5], vertices_caixa[6], vertices_caixa[7]};
     QVector<Ponto> face_esquerda = {vertices_caixa[0], vertices_caixa[4], vertices_caixa[7], vertices_caixa[3]};
-    QVector<Ponto> face_direita = {vertices_caixa[1], vertices_caixa[2], vertices_caixa[6], vertices_caixa[5]};
+    QVector<Ponto> face_direita  = {vertices_caixa[1], vertices_caixa[2], vertices_caixa[6], vertices_caixa[5]};
 
-    desenharPoligono3D(face_fundo, QBrush(QColor(0, 50, 0)));
-    desenharPoligono3D(face_teto, QBrush(QColor(50, 50, 0)));
-    desenharPoligono3D(face_chao, QBrush(QColor(50, 0, 0)));
-    desenharPoligono3D(face_esquerda, QBrush(QColor(0, 0, 50)));
-    desenharPoligono3D(face_direita, QBrush(QColor(0, 0, 50)));
+    desenharPoligono3D(face_chao, QBrush(QColor(50, 50, 50)));
+    desenharPoligono3D(face_fundo, QBrush(QColor(30, 50, 30)));
+    desenharPoligono3D(face_esquerda, QBrush(QColor(30, 30, 50)));
+    desenharPoligono3D(face_direita, QBrush(QColor(50, 30, 30)));
 
     painter.setPen(QPen(Qt::white, 1));
 
-    for (const auto& objOriginal : displayFile) {
+    // Objetos
+    int selectedIndex = ui->listWidget_objetos->currentRow();
+
+    for (int idx = 0; idx < displayFile.size(); ++idx) {
+        ObjetoGrafico* objOriginal = displayFile[idx];
         if (!objOriginal || !objOriginal->isVisivel()) continue;
+
+        QColor corObjeto = (idx == selectedIndex && idx > 0) ? QColor(255, 255, 0) : Qt::white;
+        painter.setPen(QPen(corObjeto, 1));
 
         if (objOriginal->getTipo() == TipoObjeto::OBJETO3D) {
             Objeto3D* obj3D = static_cast<Objeto3D*>(objOriginal);
@@ -256,19 +359,18 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
                     Ponto p1_mundo = objOriginal->getPontos()[face[i]];
                     Ponto p2_mundo = objOriginal->getPontos()[face[(i + 1) % face.size()]];
+
                     Ponto p1_clipped = p1_mundo;
                     Ponto p2_clipped = p2_mundo;
 
                     if (clipper->clipReta3D(p1_clipped, p2_clipped, limites3D)) {
+
                         Matrix p1_clip = T_final * p1_clipped;
                         double w1 = p1_clip.at(3, 0);
                         Matrix p2_clip = T_final * p2_clipped;
                         double w2 = p2_clip.at(3, 0);
 
-                        if (w1 < 0.1 && w2 < 0.1) {
-                            continue;
-                        }
-
+                        if (w1 < 0.1 && w2 < 0.1) continue;
                         if (w1 <= 0.1) w1 = 1e-6;
                         if (w2 <= 0.1) w2 = 1e-6;
 
@@ -290,37 +392,40 @@ void MainWindow::paintEvent(QPaintEvent *event)
     }
 }
 
+// --------------------------------------------------------------------------------
+// SLOTS DA GUI
+// --------------------------------------------------------------------------------
+
 void MainWindow::on_pushButton_carregarOBJ_clicked() {
     QString filePath = QFileDialog::getOpenFileName(this, "Carregar Modelo 3D", "", "Wavefront OBJ (*.obj)");
     if (filePath.isEmpty()) return;
     QFileInfo fileInfo(filePath);
-    Objeto3D* novoPokemon = new Objeto3D(fileInfo.baseName());
-    if (novoPokemon->carregarDeOBJ(filePath)) {
-        Ponto centroObjeto = novoPokemon->calcularCentro();
-        novoPokemon->aplicarTransformacao(Matrix::criarMatrizTranslacao(-centroObjeto.getX(), -centroObjeto.getY(), -centroObjeto.getZ()));
+    Objeto3D* novoObjeto = new Objeto3D(fileInfo.baseName());
+    if (novoObjeto->carregarDeOBJ(filePath)) {
+
+        Ponto centroObjeto = novoObjeto->calcularCentro();
+        novoObjeto->aplicarTransformacao(Matrix::criarMatrizTranslacao(-centroObjeto.getX(), -centroObjeto.getY(), -centroObjeto.getZ()));
+
         double maxDim = 0.0;
-        for(const Ponto& p : novoPokemon->getPontos()) {
+        for(const Ponto& p : novoObjeto->getPontos()) {
             maxDim = std::max({maxDim, std::abs(p.getX()), std::abs(p.getY()), std::abs(p.getZ())});
         }
         double fatorEscala = (maxDim > 0) ? (150.0 / maxDim) : 1.0;
-        novoPokemon->aplicarTransformacao(Matrix::criarMatrizEscala(fatorEscala, fatorEscala, fatorEscala));
+        novoObjeto->aplicarTransformacao(Matrix::criarMatrizEscala(fatorEscala, fatorEscala, fatorEscala));
+        novoObjeto->aplicarTransformacao(Matrix::criarMatrizTranslacao(0, 0, 0));
 
-        LimitesWindow limites3D = a_window->getLimites();
-        double cX = (limites3D.xmin + limites3D.xmax) / 2.0;
-        double cY = (limites3D.ymin + limites3D.ymax) / 2.0;
-        double cZ = (limites3D.zmin + limites3D.zmax) / 2.0;
-        novoPokemon->aplicarTransformacao(Matrix::criarMatrizTranslacao(cX, cY, cZ));
-
-        displayFile.append(novoPokemon);
+        displayFile.append(novoObjeto);
         atualizarListaObjetos();
+
+        ui->listWidget_objetos->setCurrentRow(displayFile.size() - 1);
+
         update();
     } else {
-        delete novoPokemon;
+        delete novoObjeto;
         QMessageBox::warning(this, "Erro", "Não foi possível ler ou processar o arquivo .obj selecionado.");
     }
 }
 
-<<<<<<< HEAD
 void MainWindow::on_pushButton_transladar_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     if (index <= 0) return;
@@ -348,8 +453,7 @@ void MainWindow::on_pushButton_escalar_clicked() {
 void MainWindow::on_pushButton_rotacionar_x_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     double anguloX = ui->lineEdit_angulo_x->text().toDouble();
-    if (index <= 0) { camAnguloX += anguloX; }
-    else {
+    if (index > 0) {
         Ponto pivo = displayFile[index]->calcularCentro();
         Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY(), -pivo.getZ());
         Matrix R = Matrix::criarMatrizRotacaoX(anguloX);
@@ -362,8 +466,7 @@ void MainWindow::on_pushButton_rotacionar_x_clicked() {
 void MainWindow::on_pushButton_rotacionar_y_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     double anguloY = ui->lineEdit_angulo_y->text().toDouble();
-    if (index <= 0) { camAnguloY += anguloY; }
-    else {
+    if (index > 0) {
         Ponto pivo = displayFile[index]->calcularCentro();
         Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY(), -pivo.getZ());
         Matrix R = Matrix::criarMatrizRotacaoY(anguloY);
@@ -376,8 +479,7 @@ void MainWindow::on_pushButton_rotacionar_y_clicked() {
 void MainWindow::on_pushButton_rotacionar_z_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     double anguloZ = ui->lineEdit_angulo_z->text().toDouble();
-    if (index <= 0) { camAnguloZ += anguloZ; }
-    else {
+    if (index > 0) {
         Ponto pivo = displayFile[index]->calcularCentro();
         Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY(), -pivo.getZ());
         Matrix R = Matrix::criarMatrizRotacaoZ(anguloZ);
@@ -426,14 +528,4 @@ void MainWindow::on_pushButton_aplicar_wv_clicked() {
     transformador->setViewport(v_xmin, v_ymin, v_xmax, v_ymax);
 
     update();
-=======
-void MainWindow::desenharPoligono(QPainter &painter, const QList<QPoint> &pontos) {
-    if (pontos.size() < 2) return;
-    for (int i = 0; i < pontos.size() - 1; ++i) {
-        desenharReta(painter, pontos[i], pontos[i+1]);
-    }
-    if (pontos.size() > 2) {
-        desenharReta(painter, pontos.last(), pontos.first());
-    }
->>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
 }
