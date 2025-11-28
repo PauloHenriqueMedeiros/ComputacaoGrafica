@@ -2,23 +2,16 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QList>
-#include <QString>
-#include <QPoint>
-#include <QPainter>
-#include <QListWidget>
-
-enum class TipoObjeto {
-    PONTO,
-    POLIGONO
-};
-
-struct ObjetoGrafico {
-    QString nome;
-    TipoObjeto tipo;
-    QList<QPoint> pontos;
-    bool visivel;
-};
+#include <QVector>
+#include <QListWidgetItem>
+#include <QFileDialog>
+#include <QTextStream>
+#include <QRegularExpression>
+#include <QShowEvent>
+#include "objetografico.h"
+#include "transformador.h"
+#include "windowgrafica.h"
+#include "clipping.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -34,21 +27,32 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private slots:
-    void on_pushButton_adicionar_ponto_clicked();
-    void on_pushButton_finalizar_objeto_clicked();
-    void on_pushButton_apagar_tudo_clicked();
+    void on_pushButton_transladar_clicked();
+    void on_pushButton_escalar_clicked();
+    void on_pushButton_rotacionar_x_clicked();
+    void on_pushButton_rotacionar_y_clicked();
+    void on_pushButton_rotacionar_z_clicked();
+    void on_pushButton_excluir_clicked();
     void on_listWidget_objetos_itemChanged(QListWidgetItem *item);
+    void on_pushButton_aplicar_wv_clicked();
+    void on_pushButton_carregarOBJ_clicked();
 
 private:
+    void atualizarListaObjetos();
+    void setupViewport();
+
     Ui::MainWindow *ui;
-    QList<ObjetoGrafico> displayFile;
-    QList<QPoint> pontosManuais;
+    QVector<ObjetoGrafico*> displayFile;
 
+    TransformadorCoordenadas* transformador;
+    WindowGrafica* a_window;
+    Clipping* clipper;
 
-    void desenharPonto(QPainter &painter, const QPoint &p);
-    void desenharReta(QPainter &painter, const QPoint &p1, const QPoint &p2);
-    void desenharPoligono(QPainter &painter, const QList<QPoint> &pontos);
+    double camAnguloX = 0.0;
+    double camAnguloY = 0.0;
+    double camAnguloZ = 0.0;
 };
-#endif
+#endif // MAINWINDOW_H
