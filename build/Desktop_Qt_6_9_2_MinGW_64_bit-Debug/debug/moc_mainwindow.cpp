@@ -39,6 +39,7 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
     namespace QMC = QtMocConstants;
     QtMocHelpers::StringRefStorage qt_stringData {
         "MainWindow",
+<<<<<<< HEAD
         "on_pushButton_transladar_clicked",
         "",
         "on_pushButton_escalar_clicked",
@@ -83,6 +84,28 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
         }}),
         // Slot 'on_pushButton_aplicar_wv_clicked'
         QtMocHelpers::SlotData<void()>(15, 2, QMC::AccessPrivate, QMetaType::Void),
+=======
+        "on_pushButton_adicionar_ponto_clicked",
+        "",
+        "on_pushButton_finalizar_objeto_clicked",
+        "on_pushButton_apagar_tudo_clicked",
+        "on_listWidget_objetos_itemChanged",
+        "QListWidgetItem*",
+        "item"
+    };
+
+    QtMocHelpers::UintData qt_methods {
+        // Slot 'on_pushButton_adicionar_ponto_clicked'
+        QtMocHelpers::SlotData<void()>(1, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'on_pushButton_finalizar_objeto_clicked'
+        QtMocHelpers::SlotData<void()>(3, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'on_pushButton_apagar_tudo_clicked'
+        QtMocHelpers::SlotData<void()>(4, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'on_listWidget_objetos_itemChanged'
+        QtMocHelpers::SlotData<void(QListWidgetItem *)>(5, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 6, 7 },
+        }}),
+>>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -106,6 +129,7 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
     auto *_t = static_cast<MainWindow *>(_o);
     if (_c == QMetaObject::InvokeMetaMethod) {
         switch (_id) {
+<<<<<<< HEAD
         case 0: _t->on_pushButton_transladar_clicked(); break;
         case 1: _t->on_pushButton_escalar_clicked(); break;
         case 2: _t->on_pushButton_rotacionar_clicked(); break;
@@ -117,6 +141,12 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 8: _t->on_pushButton_excluir_clicked(); break;
         case 9: _t->on_listWidget_objetos_itemChanged((*reinterpret_cast< std::add_pointer_t<QListWidgetItem*>>(_a[1]))); break;
         case 10: _t->on_pushButton_aplicar_wv_clicked(); break;
+=======
+        case 0: _t->on_pushButton_adicionar_ponto_clicked(); break;
+        case 1: _t->on_pushButton_finalizar_objeto_clicked(); break;
+        case 2: _t->on_pushButton_apagar_tudo_clicked(); break;
+        case 3: _t->on_listWidget_objetos_itemChanged((*reinterpret_cast< std::add_pointer_t<QListWidgetItem*>>(_a[1]))); break;
+>>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
         default: ;
         }
     }
@@ -141,6 +171,7 @@ int MainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
+<<<<<<< HEAD
         if (_id < 11)
             qt_static_metacall(this, _c, _id, _a);
         _id -= 11;
@@ -149,6 +180,16 @@ int MainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
         if (_id < 11)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
         _id -= 11;
+=======
+        if (_id < 4)
+            qt_static_metacall(this, _c, _id, _a);
+        _id -= 4;
+    }
+    if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+        if (_id < 4)
+            *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
+        _id -= 4;
+>>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
     }
     return _id;
 }

@@ -73,6 +73,7 @@ void MainWindow::setupViewport() {
     update();
 }
 
+<<<<<<< HEAD
 void MainWindow::atualizarListaObjetos() {
     ui->listWidget_objetos->blockSignals(true);
     ui->listWidget_objetos->clear();
@@ -82,11 +83,70 @@ void MainWindow::atualizarListaObjetos() {
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
         item->setCheckState(obj->isVisivel() ? Qt::Checked : Qt::Unchecked);
         ui->listWidget_objetos->addItem(item);
+=======
+void MainWindow::on_pushButton_finalizar_objeto_clicked()
+{
+    if (pontosManuais.isEmpty()) {
+        QMessageBox::warning(this, "Aviso", "Nenhum ponto foi adicionado à lista de preparação.");
+        return;
+    }
+
+    bool ok;
+    QString nomeObjeto = QInputDialog::getText(this, "Finalizar Objeto", "Nome do objeto:", QLineEdit::Normal, "Meu Objeto", &ok);
+
+    if (ok && !nomeObjeto.isEmpty()) {
+        ObjetoGrafico novoObjeto;
+        novoObjeto.nome = nomeObjeto;
+        QString tipoString;
+
+        if (pontosManuais.size() == 1) {
+            novoObjeto.tipo = TipoObjeto::PONTO;
+            tipoString = "Ponto";
+        } else if (pontosManuais.size() == 2) {
+            novoObjeto.tipo = TipoObjeto::RETA;
+            tipoString = "Reta";
+        } else {
+            novoObjeto.tipo = TipoObjeto::POLIGONO;
+            tipoString = "Polígono";
+        }
+
+        novoObjeto.pontos = pontosManuais;
+        novoObjeto.visivel = true;
+        displayFile.append(novoObjeto);
+
+        QString itemText = QString("%1 (%2)").arg(nomeObjeto, tipoString);
+        QListWidgetItem* item = new QListWidgetItem(itemText, ui->listWidget_objetos);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+>>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
     }
     ui->listWidget_objetos->blockSignals(false);
 }
 
+<<<<<<< HEAD
 void MainWindow::paintEvent(QPaintEvent *event) {
+=======
+void MainWindow::on_pushButton_apagar_tudo_clicked()
+{
+    displayFile.clear();
+    pontosManuais.clear();
+    ui->listWidget_objetos->clear();
+    ui->listWidget_pontos_atuais->clear();
+    update();
+}
+
+void MainWindow::on_listWidget_objetos_itemChanged(QListWidgetItem *item)
+{
+    int index = ui->listWidget_objetos->row(item);
+    if (index < 0 || index >= displayFile.size()) return;
+    bool isChecked = (item->checkState() == Qt::Checked);
+    displayFile[index].visivel = isChecked;
+    update();
+}
+
+void MainWindow::paintEvent(QPaintEvent *event)
+{
+>>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
@@ -94,6 +154,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     painter.setClipRect(ui->canvasWidget->geometry());
     painter.fillRect(ui->canvasWidget->geometry(), Qt::black);
 
+<<<<<<< HEAD
     int v_xmin = ui->lineEdit_v_xmin->text().toInt();
     int v_ymin = ui->lineEdit_v_ymin->text().toInt();
     int v_xmax = ui->lineEdit_v_xmax->text().toInt();
@@ -134,6 +195,27 @@ void MainWindow::paintEvent(QPaintEvent *event) {
             double x_tela = (x_ndc + 1.0) / 2.0 * viewportWidth + v_xmin;
             double y_tela = (1.0 - y_ndc) / 2.0 * viewportHeight + v_ymin;
             poligono_tela << QPointF(x_tela, y_tela);
+=======
+    painter.setPen(QPen(Qt::black, 2));
+
+    for (const auto &objeto : displayFile) {
+        if (!objeto.visivel) continue;
+
+        switch(objeto.tipo) {
+        case TipoObjeto::PONTO:
+            if (!objeto.pontos.isEmpty()) {
+                desenharPonto(painter, objeto.pontos.first());
+            }
+            break;
+        case TipoObjeto::RETA:
+            if (objeto.pontos.size() == 2) {
+                desenharReta(painter, objeto.pontos[0], objeto.pontos[1]);
+            }
+            break;
+        case TipoObjeto::POLIGONO:
+            desenharPoligono(painter, objeto.pontos);
+            break;
+>>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
         }
         painter.setBrush(brush);
         painter.setPen(Qt::NoPen);
@@ -238,6 +320,7 @@ void MainWindow::on_pushButton_carregarOBJ_clicked() {
     }
 }
 
+<<<<<<< HEAD
 void MainWindow::on_pushButton_transladar_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     if (index <= 0) return;
@@ -343,4 +426,14 @@ void MainWindow::on_pushButton_aplicar_wv_clicked() {
     transformador->setViewport(v_xmin, v_ymin, v_xmax, v_ymax);
 
     update();
+=======
+void MainWindow::desenharPoligono(QPainter &painter, const QList<QPoint> &pontos) {
+    if (pontos.size() < 2) return;
+    for (int i = 0; i < pontos.size() - 1; ++i) {
+        desenharReta(painter, pontos[i], pontos[i+1]);
+    }
+    if (pontos.size() > 2) {
+        desenharReta(painter, pontos.last(), pontos.first());
+    }
+>>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
 }

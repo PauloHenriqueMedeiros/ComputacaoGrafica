@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+<<<<<<< HEAD
 #include <QVector>
 #include <QListWidgetItem>
 #include <QFileDialog>
@@ -12,6 +13,26 @@
 #include "transformador.h"
 #include "windowgrafica.h"
 #include "clipping.h"
+=======
+#include <QList>
+#include <QString>
+#include <QPoint>
+#include <QPainter>
+#include <QListWidget>
+
+enum class TipoObjeto {
+    PONTO,
+    RETA,
+    POLIGONO
+};
+
+struct ObjetoGrafico {
+    QString nome;
+    TipoObjeto tipo;
+    QList<QPoint> pontos;
+    bool visivel;
+};
+>>>>>>> f47fb501572eaae1e3824d4e48f38cf1010be12a
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
