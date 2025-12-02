@@ -15,24 +15,27 @@ QString tipoParaString(TipoObjeto tipo) {
     }
 }
 
-ObjetoGrafico::ObjetoGrafico(QString nome, TipoObjeto tipo) : nome(nome), tipo(tipo), visivel(true) {}
+ObjetoGrafico::ObjetoGrafico(QString nome, TipoObjeto tipo) : nome(nome), tipo(tipo), visivel(true) {
+    // matrizModel é inicializada automaticamente como Identidade pelo construtor de Matrix
+}
+
 QString ObjetoGrafico::getNome() const { return nome; }
 TipoObjeto ObjetoGrafico::getTipo() const { return tipo; }
 QVector<Ponto>& ObjetoGrafico::getPontos() { return pontos; }
 void ObjetoGrafico::setVisivel(bool v) { visivel = v; }
 bool ObjetoGrafico::isVisivel() const { return visivel; }
+Matrix ObjetoGrafico::getMatrizModel() const { return matrizModel; }
 
+// MUDANÇA IMPORTANTE: Acumula a transformação na matrizModel
+// Em vez de alterar os pontos a cada movimento, alteramos apenas esta matriz 4x4.
 void ObjetoGrafico::aplicarTransformacao(const Matrix& matriz) {
-    for (Ponto& p : pontos) {
-        Matrix pontoComoMatriz = p;
-        Matrix resultado = matriz * pontoComoMatriz;
-        p.setX(resultado.at(0, 0));
-        p.setY(resultado.at(1, 0));
-        if (resultado.getRows() > 2) {
-            p.setZ(resultado.at(2, 0));
-        }
-    }
+    matrizModel = matriz * matrizModel;
 }
+
+// --------------------------------------------------------------------------
+// Implementações dos Objetos Específicos
+// Nota: calcularCentro retorna o centro no ESPAÇO LOCAL (já que os pontos não mudam)
+// --------------------------------------------------------------------------
 
 PontoGrafico::PontoGrafico(QString nome, const Ponto& p) : ObjetoGrafico(nome, TipoObjeto::PONTO) {
     pontos.append(p);
@@ -41,6 +44,9 @@ void PontoGrafico::desenhar(QPainter& painter) const {
     if (pontos.isEmpty()) return;
     painter.save();
     painter.setPen(QPen(painter.pen().color(), 5));
+    // Nota: desenhar() básico do QPainter aqui não usa a pipeline 3D do mainwindow,
+    // então ele desenharia no espaço local se chamado diretamente.
+    // Mas o mainwindow cuida da projeção.
     painter.drawPoint(pontos.first().getX(), pontos.first().getY());
     painter.restore();
 }

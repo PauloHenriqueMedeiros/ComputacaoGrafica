@@ -32,8 +32,6 @@ public:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void showEvent(QShowEvent *event) override;
-
-    // Eventos de Input
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -51,6 +49,9 @@ private slots:
     void on_pushButton_aplicar_wv_clicked();
     void on_pushButton_carregarOBJ_clicked();
 
+    // NOVO SLOT: Você deve conectar este botão na interface gráfica
+    void on_pushButton_alternar_projecao_clicked();
+
 private:
     void atualizarListaObjetos();
     void setupViewport();
@@ -62,14 +63,15 @@ private:
     WindowGrafica* a_window;
     Clipping* clipper;
 
-    // --- Variáveis da Câmera Orbital ---
-    double orbitDistancia; // Distância da câmera ao ponto de foco (Zoom)
-    double orbitRotX;      // Rotação Vertical (Pitch)
-    double orbitRotY;      // Rotação Horizontal (Yaw)
-    Ponto cameraFoco;      // O ponto central para onde a câmera olha
+    double orbitDistancia;
+    double orbitRotX;
+    double orbitRotY;
+    Ponto cameraFoco;
 
-    // --- Variáveis do Mouse ---
     QPoint lastMousePos;
     bool isDragging;
+
+    // NOVA VARIÁVEL: Controla o modo de visualização
+    bool usoPerspectiva;
 };
 #endif // MAINWINDOW_H

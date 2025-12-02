@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <cmath>
+#include <stdexcept>
 
 class Matrix {
 public:
@@ -16,7 +17,10 @@ public:
     static Matrix criarMatrizRotacaoX(double anguloGraus);
     static Matrix criarMatrizRotacaoY(double anguloGraus);
     static Matrix criarMatrizRotacaoZ(double anguloGraus);
-    static Matrix criarMatrizProjecaoOrtogonal();
+
+    // ATUALIZADO: Agora recebe os limites do volume de visualização
+    static Matrix criarMatrizProjecaoOrtogonal(double left, double right, double bottom, double top, double near, double far);
+
     static Matrix criarMatrizProjecaoPerspectiva(double fov, double aspect, double near, double far);
 
     double& at(int row, int col);
@@ -26,7 +30,7 @@ public:
 
 protected:
     int rows, cols;
-    std::vector<std::vector<double>> data;
+    double data[4][4];
 };
 
 #endif // MATRIX_H

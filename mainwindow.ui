@@ -653,6 +653,19 @@
      </property>
     </widget>
    </widget>
+   <widget class="QPushButton" name="pushButton_alternar_projecao">
+    <property name="geometry">
+     <rect>
+      <x>220</x>
+      <y>620</y>
+      <width>141</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Alternar visualização</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -660,7 +673,7 @@
      <x>0</x>
      <y>0</y>
      <width>947</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
