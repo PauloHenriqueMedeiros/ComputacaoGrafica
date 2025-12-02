@@ -45,11 +45,19 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_zmin->setText(QString::number(w_zmin_default));
     ui->lineEdit_zmax->setText(QString::number(w_zmax_default));
 
+<<<<<<< HEAD
+=======
+    // --- Inicialização da Câmera ---
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
     orbitDistancia = 600.0;
     orbitRotX = 20.0;
     orbitRotY = 0.0;
     cameraFoco = Ponto(0, 0, 0);
+<<<<<<< HEAD
     usoPerspectiva = true;
+=======
+    usoPerspectiva = true; // Começa em perspectiva
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
 
     isDragging = false;
     this->setFocusPolicy(Qt::StrongFocus);
@@ -226,6 +234,13 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
     update();
 }
 
+<<<<<<< HEAD
+=======
+// --------------------------------------------------------------------------------
+// RENDERIZAÇÃO E SELEÇÃO DE PROJEÇÃO
+// --------------------------------------------------------------------------------
+
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
 void MainWindow::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
     QPainter painter(this);
@@ -248,6 +263,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
 
     LimitesWindow limites3D = a_window->getLimites();
 
+<<<<<<< HEAD
     // Definição da LUZ para a Sombra (Ponto de Luz no Teto)
     // Se a caixa tem limites tipo +/- 250, colocamos a luz em Y=400 (bem acima)
     Ponto luz(0, 400.0, 0);
@@ -255,28 +271,51 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     Matrix matrizSombraGlobal = Matrix::criarMatrizSombra(luz, yChao);
 
     // Camera
+=======
+    // Matriz de Visualização (Camera)
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
     Matrix T_pan = Matrix::criarMatrizTranslacao(-cameraFoco.getX(), -cameraFoco.getY(), -cameraFoco.getZ());
     Matrix T_rot = Matrix::criarMatrizRotacaoX(orbitRotX) * Matrix::criarMatrizRotacaoY(orbitRotY);
     Matrix T_zoom = Matrix::criarMatrizTranslacao(0, 0, -orbitDistancia);
     Matrix T_view = T_zoom * T_rot * T_pan;
 
+<<<<<<< HEAD
     Matrix T_proj;
     if (usoPerspectiva) {
         T_proj = Matrix::criarMatrizProjecaoPerspectiva(60.0, aspect, 10.0, 5000.0);
     } else {
         double halfHeight = orbitDistancia * tan(30.0 * M_PI / 180.0);
         double halfWidth = halfHeight * aspect;
+=======
+    // SELEÇÃO DA PROJEÇÃO
+    Matrix T_proj;
+    if (usoPerspectiva) {
+        // Perspectiva Clássica
+        T_proj = Matrix::criarMatrizProjecaoPerspectiva(60.0, aspect, 10.0, 5000.0);
+    } else {
+        // Ortogonal: Calculamos o tamanho da "janela" baseado na distância para simular Zoom.
+        // Se a distância é 600 e FOV 60, a altura visível seria ~ 2 * dist * tan(30).
+        double halfHeight = orbitDistancia * tan(30.0 * M_PI / 180.0);
+        double halfWidth = halfHeight * aspect;
+        // left, right, bottom, top, near, far
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
         T_proj = Matrix::criarMatrizProjecaoOrtogonal(-halfWidth, halfWidth, -halfHeight, halfHeight, 10.0, 5000.0);
     }
 
     Matrix T_final = T_proj * T_view;
 
+    // Helper de desenho
     auto desenharPoligono3D = [&](const QVector<Ponto>& vertices, const QBrush& brush) {
         QPolygonF poligono_tela;
         for (const Ponto& p_mundo : vertices) {
             Matrix p_clip = T_final * p_mundo;
             double w = p_clip.at(3, 0);
 
+<<<<<<< HEAD
+=======
+            // Na ortogonal W é 1, na perspectiva W varia.
+            // Para evitar divisão por zero ou w negativo (atrás da câmera na perspectiva)
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
             if (usoPerspectiva && w < 0.1) { return; }
             if (w == 0) w = 1e-6;
 
@@ -313,6 +352,11 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     desenharPoligono3D(face_esquerda, QBrush(QColor(30, 30, 50)));
     desenharPoligono3D(face_direita, QBrush(QColor(50, 30, 30)));
 
+<<<<<<< HEAD
+=======
+    painter.setPen(QPen(Qt::white, 1));
+
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
     int selectedIndex = ui->listWidget_objetos->currentRow();
 
     for (int idx = 0; idx < displayFile.size(); ++idx) {
@@ -323,6 +367,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
             Objeto3D* obj3D = static_cast<Objeto3D*>(objOriginal);
             Matrix matrizModelo = objOriginal->getMatrizModel();
 
+<<<<<<< HEAD
             // ========================================================================
             // 1. DESENHAR SOMBRA (Antes do objeto)
             // ========================================================================
@@ -332,11 +377,14 @@ void MainWindow::paintEvent(QPaintEvent *event) {
             painter.save();
             painter.setPen(QPen(Qt::darkGray, 1, Qt::SolidLine)); // Cor da Sombra
 
+=======
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
             for (const auto& face : obj3D->getFaces()) {
                 for (int i = 0; i < face.size(); ++i) {
                     Ponto p1_local = objOriginal->getPontos()[face[i]];
                     Ponto p2_local = objOriginal->getPontos()[face[(i + 1) % face.size()]];
 
+<<<<<<< HEAD
                     // Aplica Modelo -> Depois Aplica Sombra -> Vira coordenada de Mundo Sombreada
                     Matrix m1_sombra = matrizSombraGlobal * (matrizModelo * p1_local);
                     Matrix m2_sombra = matrizSombraGlobal * (matrizModelo * p2_local);
@@ -406,6 +454,8 @@ void MainWindow::paintEvent(QPaintEvent *event) {
                     Ponto p1_local = objOriginal->getPontos()[face[i]];
                     Ponto p2_local = objOriginal->getPontos()[face[(i + 1) % face.size()]];
 
+=======
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
                     Matrix m1_world = matrizModelo * p1_local;
                     Matrix m2_world = matrizModelo * p2_local;
                     Ponto p1_mundo(m1_world.at(0,0), m1_world.at(1,0), m1_world.at(2,0));
@@ -590,6 +640,10 @@ void MainWindow::on_pushButton_aplicar_wv_clicked() {
     update();
 }
 
+<<<<<<< HEAD
+=======
+// IMPLEMENTAÇÃO NOVA: Slot para alternar entre as projeções
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
 void MainWindow::on_pushButton_alternar_projecao_clicked() {
     usoPerspectiva = !usoPerspectiva;
     update();

@@ -1,7 +1,11 @@
 #include "matrix.h"
+<<<<<<< HEAD
 #include "ponto.h" // <--- CORREÇÃO: Incluímos aqui para ter acesso aos métodos de Ponto
 #include <cstring>
 #include <cmath> // Garantir que abs e outras funcoes matematicas existam
+=======
+#include <cstring>
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -95,6 +99,7 @@ Matrix Matrix::criarMatrizRotacaoZ(double anguloGraus) {
     return r;
 }
 
+<<<<<<< HEAD
 Matrix Matrix::criarMatrizProjecaoOrtogonal(double left, double right, double bottom, double top, double near, double far) {
     Matrix p;
     p.at(0, 0) = 2.0 / (right - left);
@@ -103,11 +108,25 @@ Matrix Matrix::criarMatrizProjecaoOrtogonal(double left, double right, double bo
     p.at(0, 3) = -(right + left) / (right - left);
     p.at(1, 3) = -(top + bottom) / (top - bottom);
     p.at(2, 3) = -(far + near) / (far - near);
+=======
+// IMPLEMENTAÇÃO NOVA: Matriz Ortogonal
+Matrix Matrix::criarMatrizProjecaoOrtogonal(double left, double right, double bottom, double top, double near, double far) {
+    Matrix p; // Identidade
+    p.at(0, 0) = 2.0 / (right - left);
+    p.at(1, 1) = 2.0 / (top - bottom);
+    p.at(2, 2) = -2.0 / (far - near);
+
+    p.at(0, 3) = -(right + left) / (right - left);
+    p.at(1, 3) = -(top + bottom) / (top - bottom);
+    p.at(2, 3) = -(far + near) / (far - near);
+
+    // p.at(3,3) já é 1.0 da identidade
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
     return p;
 }
 
 Matrix Matrix::criarMatrizProjecaoPerspectiva(double fov, double aspect, double near, double far) {
-    Matrix p(4, 4);
+    Matrix p(4, 4); // Zeros
     double fovRad = (fov / 2.0) * M_PI / 180.0;
     double f = 1.0 / tan(fovRad);
 
@@ -117,6 +136,10 @@ Matrix Matrix::criarMatrizProjecaoPerspectiva(double fov, double aspect, double 
     p.at(2, 3) = (2 * far * near) / (near - far);
     p.at(3, 2) = -1.0;
     p.at(3, 3) = 0.0;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 477aa6c006751dae2e096add6e6e7b5fa8249ce4
     return p;
 }
 
