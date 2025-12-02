@@ -22,7 +22,6 @@ MainWindow::MainWindow(QWidget *parent)
         this->setFocus();
     });
 
-    // Configuração inicial da Window
     double w_xmin_default = -250.0;
     double w_ymin_default = -250.0;
     double w_zmin_default = -150.0;
@@ -46,11 +45,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_zmin->setText(QString::number(w_zmin_default));
     ui->lineEdit_zmax->setText(QString::number(w_zmax_default));
 
-    // --- Inicialização da Câmera Orbital ---
     orbitDistancia = 600.0;
     orbitRotX = 20.0;
     orbitRotY = 0.0;
     cameraFoco = Ponto(0, 0, 0);
+    usoPerspectiva = true;
 
     isDragging = false;
     this->setFocusPolicy(Qt::StrongFocus);
@@ -72,8 +71,8 @@ void MainWindow::showEvent(QShowEvent *event) {
 }
 
 void MainWindow::setupViewport() {
-    int canvas_width = ui->canvasWidget->width();
-    int canvas_height = ui->canvasWidget->height();
+    int canvas_width = ui->Tela->width();
+    int canvas_height = ui->Tela->height();
 
     int padding = 0;
 
@@ -105,10 +104,6 @@ void MainWindow::atualizarListaObjetos() {
     ui->listWidget_objetos->blockSignals(false);
 }
 
-// --------------------------------------------------------------------------------
-// CONTROLES MOUSE (Lógica Atualizada)
-// --------------------------------------------------------------------------------
-
 void MainWindow::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton || event->button() == Qt::RightButton) {
         lastMousePos = event->pos();
@@ -124,73 +119,43 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event) {
     double dy = event->y() - lastMousePos.y();
     double sensitivity = 0.5;
 
-    // ====================================================================
-    // MODO MODIFICADOR: CTRL PRESSIONADO (Manipulação do Objeto)
-    // ====================================================================
     if (event->modifiers() & Qt::ControlModifier) {
-
         int index = ui->listWidget_objetos->currentRow();
-
-        // Só executa se tiver um objeto válido selecionado
         if (index > 0 && index < displayFile.size()) {
             ObjetoGrafico* obj = displayFile[index];
-
-            // --- CTRL + BOTÃO ESQUERDO: TRANSLADAR (MOVER) ---
             if (event->buttons() & Qt::LeftButton) {
-
-                // Precisamos mover o objeto relativo à rotação da câmera (orbitRotY)
-                // Se a câmera girou, "Direita" no mouse não é mais X no mundo.
-
                 double radY = orbitRotY * M_PI / 180.0;
-                double cosY = cos(radY); // Eixo X da Câmera (Right)
-                double sinY = sin(radY); // Eixo Z da Câmera (Forward/Back)
-
-                // Cálculo da Translação no Mundo:
-                // Mouse DX move ao longo do vetor "Direita" da câmera
-                // Mouse DY move ao longo do vetor "Cima" do mundo (Y)
-
-                // sensitivity * 2.0 para ficar mais ágil o movimento
+                double cosY = cos(radY);
+                double sinY = sin(radY);
                 double moveSpeed = 2.0;
-
-                double transX = dx * moveSpeed * cosY;  // Move no plano com base no ângulo
-                double transZ = dx * moveSpeed * sinY;  // Move no plano com base no ângulo
-                double transY = -dy * moveSpeed;        // Invertido: Mouse pra baixo = Y diminui
-
+                double transX = dx * moveSpeed * cosY;
+                double transZ = dx * moveSpeed * sinY;
+                double transY = -dy * moveSpeed;
                 obj->aplicarTransformacao(Matrix::criarMatrizTranslacao(transX, transY, transZ));
             }
         }
-    }
-
-    // ====================================================================
-    // MODO PADRÃO: SEM MODIFICADORES
-    // ====================================================================
-    else {
-        // --- BOTÃO ESQUERDO: GIRA CÂMERA ---
+    } else {
         if (event->buttons() & Qt::LeftButton) {
             orbitRotY += dx * sensitivity;
             orbitRotX += dy * sensitivity;
-
             if (orbitRotX > 90.0) orbitRotX = 90.0;
             if (orbitRotX < -90.0) orbitRotX = -90.0;
-        }
-
-        // --- BOTÃO DIREITO: GIRA OBJETO SELECIONADO (Local) ---
-        else if (event->buttons() & Qt::RightButton) {
+        } else if (event->buttons() & Qt::RightButton) {
             int index = ui->listWidget_objetos->currentRow();
             if (index > 0 && index < displayFile.size()) {
                 ObjetoGrafico* obj = displayFile[index];
-
-                Ponto centro = obj->calcularCentro();
-                Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY(), -centro.getZ());
+                Ponto centroLocal = obj->calcularCentro();
+                Matrix model = obj->getMatrizModel();
+                Matrix centroWorldMat = model * centroLocal;
+                Ponto centroWorld(centroWorldMat.at(0,0), centroWorldMat.at(1,0), centroWorldMat.at(2,0));
+                Matrix T1 = Matrix::criarMatrizTranslacao(-centroWorld.getX(), -centroWorld.getY(), -centroWorld.getZ());
                 Matrix RotY = Matrix::criarMatrizRotacaoY(dx * sensitivity);
                 Matrix RotX = Matrix::criarMatrizRotacaoX(dy * sensitivity);
-                Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY(), centro.getZ());
-
+                Matrix T2 = Matrix::criarMatrizTranslacao(centroWorld.getX(), centroWorld.getY(), centroWorld.getZ());
                 obj->aplicarTransformacao(T2 * RotX * RotY * T1);
             }
         }
     }
-
     lastMousePos = event->pos();
     update();
 }
@@ -201,26 +166,23 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event) {
     }
 }
 
-// --- SCROLL: ZOOM (Sem Ctrl) / ESCALA (Com Ctrl) ---
 void MainWindow::wheelEvent(QWheelEvent *event) {
-
     if (event->modifiers() & Qt::ControlModifier) {
-        // MODO ESCALA (CTRL + SCROLL)
         int index = ui->listWidget_objetos->currentRow();
         if (index > 0 && index < displayFile.size()) {
             ObjetoGrafico* obj = displayFile[index];
             double scaleFactor = (event->angleDelta().y() > 0) ? 1.1 : 0.9;
-
-            Ponto centro = obj->calcularCentro();
-            Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY(), -centro.getZ());
+            Ponto centroLocal = obj->calcularCentro();
+            Matrix model = obj->getMatrizModel();
+            Matrix centroWorldMat = model * centroLocal;
+            Ponto centroWorld(centroWorldMat.at(0,0), centroWorldMat.at(1,0), centroWorldMat.at(2,0));
+            Matrix T1 = Matrix::criarMatrizTranslacao(-centroWorld.getX(), -centroWorld.getY(), -centroWorld.getZ());
             Matrix S = Matrix::criarMatrizEscala(scaleFactor, scaleFactor, scaleFactor);
-            Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY(), centro.getZ());
-
+            Matrix T2 = Matrix::criarMatrizTranslacao(centroWorld.getX(), centroWorld.getY(), centroWorld.getZ());
             obj->aplicarTransformacao(T2 * S * T1);
             update();
         }
     } else {
-        // MODO ZOOM CÂMERA (APENAS SCROLL)
         double delta = (event->angleDelta().y() > 0) ? -50.0 : 50.0;
         orbitDistancia += delta;
         if (orbitDistancia < 10.0) orbitDistancia = 10.0;
@@ -264,17 +226,13 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
     update();
 }
 
-// --------------------------------------------------------------------------------
-// RENDERIZAÇÃO
-// --------------------------------------------------------------------------------
-
 void MainWindow::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    painter.setClipRect(ui->canvasWidget->geometry());
-    painter.fillRect(ui->canvasWidget->geometry(), Qt::black);
+    painter.setClipRect(ui->Tela->geometry());
+    painter.fillRect(ui->Tela->geometry(), Qt::black);
 
     int v_xmin = ui->lineEdit_v_xmin->text().toInt();
     int v_ymin = ui->lineEdit_v_ymin->text().toInt();
@@ -290,12 +248,27 @@ void MainWindow::paintEvent(QPaintEvent *event) {
 
     LimitesWindow limites3D = a_window->getLimites();
 
-    // Matrizes
+    // Definição da LUZ para a Sombra (Ponto de Luz no Teto)
+    // Se a caixa tem limites tipo +/- 250, colocamos a luz em Y=400 (bem acima)
+    Ponto luz(0, 400.0, 0);
+    double yChao = limites3D.ymin;
+    Matrix matrizSombraGlobal = Matrix::criarMatrizSombra(luz, yChao);
+
+    // Camera
     Matrix T_pan = Matrix::criarMatrizTranslacao(-cameraFoco.getX(), -cameraFoco.getY(), -cameraFoco.getZ());
     Matrix T_rot = Matrix::criarMatrizRotacaoX(orbitRotX) * Matrix::criarMatrizRotacaoY(orbitRotY);
     Matrix T_zoom = Matrix::criarMatrizTranslacao(0, 0, -orbitDistancia);
     Matrix T_view = T_zoom * T_rot * T_pan;
-    Matrix T_proj = Matrix::criarMatrizProjecaoPerspectiva(60.0, aspect, 10.0, 5000.0);
+
+    Matrix T_proj;
+    if (usoPerspectiva) {
+        T_proj = Matrix::criarMatrizProjecaoPerspectiva(60.0, aspect, 10.0, 5000.0);
+    } else {
+        double halfHeight = orbitDistancia * tan(30.0 * M_PI / 180.0);
+        double halfWidth = halfHeight * aspect;
+        T_proj = Matrix::criarMatrizProjecaoOrtogonal(-halfWidth, halfWidth, -halfHeight, halfHeight, 10.0, 5000.0);
+    }
+
     Matrix T_final = T_proj * T_view;
 
     auto desenharPoligono3D = [&](const QVector<Ponto>& vertices, const QBrush& brush) {
@@ -304,7 +277,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
             Matrix p_clip = T_final * p_mundo;
             double w = p_clip.at(3, 0);
 
-            if (w < 0.1) { return; }
+            if (usoPerspectiva && w < 0.1) { return; }
             if (w == 0) w = 1e-6;
 
             double x_ndc = p_clip.at(0, 0) / w;
@@ -340,39 +313,121 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     desenharPoligono3D(face_esquerda, QBrush(QColor(30, 30, 50)));
     desenharPoligono3D(face_direita, QBrush(QColor(50, 30, 30)));
 
-    painter.setPen(QPen(Qt::white, 1));
-
-    // Objetos
     int selectedIndex = ui->listWidget_objetos->currentRow();
 
     for (int idx = 0; idx < displayFile.size(); ++idx) {
         ObjetoGrafico* objOriginal = displayFile[idx];
         if (!objOriginal || !objOriginal->isVisivel()) continue;
 
-        QColor corObjeto = (idx == selectedIndex && idx > 0) ? QColor(255, 255, 0) : Qt::white;
-        painter.setPen(QPen(corObjeto, 1));
-
         if (objOriginal->getTipo() == TipoObjeto::OBJETO3D) {
             Objeto3D* obj3D = static_cast<Objeto3D*>(objOriginal);
+            Matrix matrizModelo = objOriginal->getMatrizModel();
+
+            // ========================================================================
+            // 1. DESENHAR SOMBRA (Antes do objeto)
+            // ========================================================================
+            // A matriz final da sombra é: MatrizSombra * MatrizModeloDoObjeto
+            // Isso projeta o objeto no chão na posição correta.
+
+            painter.save();
+            painter.setPen(QPen(Qt::darkGray, 1, Qt::SolidLine)); // Cor da Sombra
+
             for (const auto& face : obj3D->getFaces()) {
                 for (int i = 0; i < face.size(); ++i) {
+                    Ponto p1_local = objOriginal->getPontos()[face[i]];
+                    Ponto p2_local = objOriginal->getPontos()[face[(i + 1) % face.size()]];
 
-                    Ponto p1_mundo = objOriginal->getPontos()[face[i]];
-                    Ponto p2_mundo = objOriginal->getPontos()[face[(i + 1) % face.size()]];
+                    // Aplica Modelo -> Depois Aplica Sombra -> Vira coordenada de Mundo Sombreada
+                    Matrix m1_sombra = matrizSombraGlobal * (matrizModelo * p1_local);
+                    Matrix m2_sombra = matrizSombraGlobal * (matrizModelo * p2_local);
+
+                    // Atenção: A matriz de sombra resulta em W != 1, precisa normalizar
+                    // Mas T_final fará a divisão por W no final. Porém, a matriz de sombra
+                    // pode gerar W negativo ou zero se o ponto estiver acima da luz (raro aqui).
+
+                    Ponto p1_sombra_mundo(m1_sombra.at(0,0), m1_sombra.at(1,0), m1_sombra.at(2,0));
+                    Ponto p2_sombra_mundo(m2_sombra.at(0,0), m2_sombra.at(1,0), m2_sombra.at(2,0));
+
+                    // Passamos w da sombra adiante? Não, o Ponto simplificado perde o W.
+                    // Para corrigir perfeitamente precisaria vetor 4D.
+                    // Mas como a sombra projeta no plano (y fixo), e T_final recalcula W,
+                    // geralmente funciona se dividirmos pelo W da sombra aqui.
+
+                    double w1_s = m1_sombra.at(3,0);
+                    double w2_s = m2_sombra.at(3,0);
+
+                    if (std::abs(w1_s) > 0.001) {
+                        p1_sombra_mundo.setX(p1_sombra_mundo.getX() / w1_s);
+                        p1_sombra_mundo.setY(p1_sombra_mundo.getY() / w1_s);
+                        p1_sombra_mundo.setZ(p1_sombra_mundo.getZ() / w1_s);
+                    }
+                    if (std::abs(w2_s) > 0.001) {
+                        p2_sombra_mundo.setX(p2_sombra_mundo.getX() / w2_s);
+                        p2_sombra_mundo.setY(p2_sombra_mundo.getY() / w2_s);
+                        p2_sombra_mundo.setZ(p2_sombra_mundo.getZ() / w2_s);
+                    }
+
+                    // Clipar Sombra (como se fosse um objeto no mundo)
+                    if (clipper->clipReta3D(p1_sombra_mundo, p2_sombra_mundo, limites3D)) {
+                        Matrix p1_c = T_final * p1_sombra_mundo;
+                        double w1 = p1_c.at(3, 0);
+                        Matrix p2_c = T_final * p2_sombra_mundo;
+                        double w2 = p2_c.at(3, 0);
+
+                        if (usoPerspectiva) {
+                            if (w1 < 0.1 && w2 < 0.1) continue;
+                            if (w1 <= 0.1) w1 = 1e-6;
+                            if (w2 <= 0.1) w2 = 1e-6;
+                        } else {
+                            if (w1 == 0) w1 = 1.0;
+                            if (w2 == 0) w2 = 1.0;
+                        }
+
+                        double x1_t = (p1_c.at(0,0)/w1 + 1.0)/2.0 * viewportWidth + v_xmin;
+                        double y1_t = (1.0 - p1_c.at(1,0)/w1)/2.0 * viewportHeight + v_ymin;
+                        double x2_t = (p2_c.at(0,0)/w2 + 1.0)/2.0 * viewportWidth + v_xmin;
+                        double y2_t = (1.0 - p2_c.at(1,0)/w2)/2.0 * viewportHeight + v_ymin;
+
+                        painter.drawLine(x1_t, y1_t, x2_t, y2_t);
+                    }
+                }
+            }
+            painter.restore();
+
+            // ========================================================================
+            // 2. DESENHAR OBJETO REAL
+            // ========================================================================
+
+            QColor corObjeto = (idx == selectedIndex && idx > 0) ? QColor(255, 255, 0) : Qt::white;
+            painter.setPen(QPen(corObjeto, 1));
+
+            for (const auto& face : obj3D->getFaces()) {
+                for (int i = 0; i < face.size(); ++i) {
+                    Ponto p1_local = objOriginal->getPontos()[face[i]];
+                    Ponto p2_local = objOriginal->getPontos()[face[(i + 1) % face.size()]];
+
+                    Matrix m1_world = matrizModelo * p1_local;
+                    Matrix m2_world = matrizModelo * p2_local;
+                    Ponto p1_mundo(m1_world.at(0,0), m1_world.at(1,0), m1_world.at(2,0));
+                    Ponto p2_mundo(m2_world.at(0,0), m2_world.at(1,0), m2_world.at(2,0));
 
                     Ponto p1_clipped = p1_mundo;
                     Ponto p2_clipped = p2_mundo;
 
                     if (clipper->clipReta3D(p1_clipped, p2_clipped, limites3D)) {
-
                         Matrix p1_clip = T_final * p1_clipped;
                         double w1 = p1_clip.at(3, 0);
                         Matrix p2_clip = T_final * p2_clipped;
                         double w2 = p2_clip.at(3, 0);
 
-                        if (w1 < 0.1 && w2 < 0.1) continue;
-                        if (w1 <= 0.1) w1 = 1e-6;
-                        if (w2 <= 0.1) w2 = 1e-6;
+                        if (usoPerspectiva) {
+                            if (w1 < 0.1 && w2 < 0.1) continue;
+                            if (w1 <= 0.1) w1 = 1e-6;
+                            if (w2 <= 0.1) w2 = 1e-6;
+                        } else {
+                            if (w1 == 0) w1 = 1.0;
+                            if (w2 == 0) w2 = 1.0;
+                        }
 
                         double x1_ndc = p1_clip.at(0, 0) / w1;
                         double y1_ndc = p1_clip.at(1, 0) / w1;
@@ -392,19 +447,14 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     }
 }
 
-// --------------------------------------------------------------------------------
-// SLOTS DA GUI
-// --------------------------------------------------------------------------------
-
 void MainWindow::on_pushButton_carregarOBJ_clicked() {
     QString filePath = QFileDialog::getOpenFileName(this, "Carregar Modelo 3D", "", "Wavefront OBJ (*.obj)");
     if (filePath.isEmpty()) return;
     QFileInfo fileInfo(filePath);
     Objeto3D* novoObjeto = new Objeto3D(fileInfo.baseName());
     if (novoObjeto->carregarDeOBJ(filePath)) {
-
-        Ponto centroObjeto = novoObjeto->calcularCentro();
-        novoObjeto->aplicarTransformacao(Matrix::criarMatrizTranslacao(-centroObjeto.getX(), -centroObjeto.getY(), -centroObjeto.getZ()));
+        Ponto centroLocal = novoObjeto->calcularCentro();
+        novoObjeto->aplicarTransformacao(Matrix::criarMatrizTranslacao(-centroLocal.getX(), -centroLocal.getY(), -centroLocal.getZ()));
 
         double maxDim = 0.0;
         for(const Ponto& p : novoObjeto->getPontos()) {
@@ -412,13 +462,10 @@ void MainWindow::on_pushButton_carregarOBJ_clicked() {
         }
         double fatorEscala = (maxDim > 0) ? (150.0 / maxDim) : 1.0;
         novoObjeto->aplicarTransformacao(Matrix::criarMatrizEscala(fatorEscala, fatorEscala, fatorEscala));
-        novoObjeto->aplicarTransformacao(Matrix::criarMatrizTranslacao(0, 0, 0));
 
         displayFile.append(novoObjeto);
         atualizarListaObjetos();
-
         ui->listWidget_objetos->setCurrentRow(displayFile.size() - 1);
-
         update();
     } else {
         delete novoObjeto;
@@ -442,11 +489,15 @@ void MainWindow::on_pushButton_escalar_clicked() {
     double sx = ui->lineEdit_sx->text().toDouble();
     double sy = ui->lineEdit_sy->text().toDouble();
     double sz = ui->lineEdit_sz->text().toDouble();
-    Ponto centro = displayFile[index]->calcularCentro();
-    Matrix T1 = Matrix::criarMatrizTranslacao(-centro.getX(), -centro.getY(), -centro.getZ());
+    ObjetoGrafico* obj = displayFile[index];
+    Ponto centroLocal = obj->calcularCentro();
+    Matrix model = obj->getMatrizModel();
+    Matrix centroWorldMat = model * centroLocal;
+    Ponto centroWorld(centroWorldMat.at(0,0), centroWorldMat.at(1,0), centroWorldMat.at(2,0));
+    Matrix T1 = Matrix::criarMatrizTranslacao(-centroWorld.getX(), -centroWorld.getY(), -centroWorld.getZ());
     Matrix S = Matrix::criarMatrizEscala(sx, sy, sz);
-    Matrix T2 = Matrix::criarMatrizTranslacao(centro.getX(), centro.getY(), centro.getZ());
-    displayFile[index]->aplicarTransformacao(T2 * S * T1);
+    Matrix T2 = Matrix::criarMatrizTranslacao(centroWorld.getX(), centroWorld.getY(), centroWorld.getZ());
+    obj->aplicarTransformacao(T2 * S * T1);
     update();
 }
 
@@ -454,11 +505,15 @@ void MainWindow::on_pushButton_rotacionar_x_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     double anguloX = ui->lineEdit_angulo_x->text().toDouble();
     if (index > 0) {
-        Ponto pivo = displayFile[index]->calcularCentro();
-        Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY(), -pivo.getZ());
+        ObjetoGrafico* obj = displayFile[index];
+        Ponto centroLocal = obj->calcularCentro();
+        Matrix model = obj->getMatrizModel();
+        Matrix centroWorldMat = model * centroLocal;
+        Ponto centroWorld(centroWorldMat.at(0,0), centroWorldMat.at(1,0), centroWorldMat.at(2,0));
+        Matrix T1 = Matrix::criarMatrizTranslacao(-centroWorld.getX(), -centroWorld.getY(), -centroWorld.getZ());
         Matrix R = Matrix::criarMatrizRotacaoX(anguloX);
-        Matrix T2 = Matrix::criarMatrizTranslacao(pivo.getX(), pivo.getY(), pivo.getZ());
-        displayFile[index]->aplicarTransformacao(T2 * R * T1);
+        Matrix T2 = Matrix::criarMatrizTranslacao(centroWorld.getX(), centroWorld.getY(), centroWorld.getZ());
+        obj->aplicarTransformacao(T2 * R * T1);
     }
     update();
 }
@@ -467,11 +522,15 @@ void MainWindow::on_pushButton_rotacionar_y_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     double anguloY = ui->lineEdit_angulo_y->text().toDouble();
     if (index > 0) {
-        Ponto pivo = displayFile[index]->calcularCentro();
-        Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY(), -pivo.getZ());
+        ObjetoGrafico* obj = displayFile[index];
+        Ponto centroLocal = obj->calcularCentro();
+        Matrix model = obj->getMatrizModel();
+        Matrix centroWorldMat = model * centroLocal;
+        Ponto centroWorld(centroWorldMat.at(0,0), centroWorldMat.at(1,0), centroWorldMat.at(2,0));
+        Matrix T1 = Matrix::criarMatrizTranslacao(-centroWorld.getX(), -centroWorld.getY(), -centroWorld.getZ());
         Matrix R = Matrix::criarMatrizRotacaoY(anguloY);
-        Matrix T2 = Matrix::criarMatrizTranslacao(pivo.getX(), pivo.getY(), pivo.getZ());
-        displayFile[index]->aplicarTransformacao(T2 * R * T1);
+        Matrix T2 = Matrix::criarMatrizTranslacao(centroWorld.getX(), centroWorld.getY(), centroWorld.getZ());
+        obj->aplicarTransformacao(T2 * R * T1);
     }
     update();
 }
@@ -480,11 +539,15 @@ void MainWindow::on_pushButton_rotacionar_z_clicked() {
     int index = ui->listWidget_objetos->currentRow();
     double anguloZ = ui->lineEdit_angulo_z->text().toDouble();
     if (index > 0) {
-        Ponto pivo = displayFile[index]->calcularCentro();
-        Matrix T1 = Matrix::criarMatrizTranslacao(-pivo.getX(), -pivo.getY(), -pivo.getZ());
+        ObjetoGrafico* obj = displayFile[index];
+        Ponto centroLocal = obj->calcularCentro();
+        Matrix model = obj->getMatrizModel();
+        Matrix centroWorldMat = model * centroLocal;
+        Ponto centroWorld(centroWorldMat.at(0,0), centroWorldMat.at(1,0), centroWorldMat.at(2,0));
+        Matrix T1 = Matrix::criarMatrizTranslacao(-centroWorld.getX(), -centroWorld.getY(), -centroWorld.getZ());
         Matrix R = Matrix::criarMatrizRotacaoZ(anguloZ);
-        Matrix T2 = Matrix::criarMatrizTranslacao(pivo.getX(), pivo.getY(), pivo.getZ());
-        displayFile[index]->aplicarTransformacao(T2 * R * T1);
+        Matrix T2 = Matrix::criarMatrizTranslacao(centroWorld.getX(), centroWorld.getY(), centroWorld.getZ());
+        obj->aplicarTransformacao(T2 * R * T1);
     }
     update();
 }
@@ -515,17 +578,19 @@ void MainWindow::on_pushButton_aplicar_wv_clicked() {
     double w_xmax = ui->lineEdit_w_xmax->text().toDouble();
     double w_ymax = ui->lineEdit_w_ymax->text().toDouble();
     a_window->atualizarLimites(w_xmin, w_ymin, w_xmax, w_ymax);
-
     double w_zmin = ui->lineEdit_zmin->text().toDouble();
     double w_zmax = ui->lineEdit_zmax->text().toDouble();
     a_window->setZMin(w_zmin);
     a_window->setZMax(w_zmax);
-
     int v_xmin = ui->lineEdit_v_xmin->text().toInt();
     int v_ymin = ui->lineEdit_v_ymin->text().toInt();
     int v_xmax = ui->lineEdit_v_xmax->text().toInt();
     int v_ymax = ui->lineEdit_v_ymax->text().toInt();
     transformador->setViewport(v_xmin, v_ymin, v_xmax, v_ymax);
+    update();
+}
 
+void MainWindow::on_pushButton_alternar_projecao_clicked() {
+    usoPerspectiva = !usoPerspectiva;
     update();
 }

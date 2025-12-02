@@ -3,6 +3,11 @@
 
 #include <vector>
 #include <cmath>
+#include <stdexcept>
+
+// CORREÇÃO: Forward Declaration
+// Dizemos ao compilador: "Existe uma classe chamada Ponto, não precisa dos detalhes agora."
+class Ponto;
 
 class Matrix {
 public:
@@ -16,8 +21,12 @@ public:
     static Matrix criarMatrizRotacaoX(double anguloGraus);
     static Matrix criarMatrizRotacaoY(double anguloGraus);
     static Matrix criarMatrizRotacaoZ(double anguloGraus);
-    static Matrix criarMatrizProjecaoOrtogonal();
+
+    static Matrix criarMatrizProjecaoOrtogonal(double left, double right, double bottom, double top, double near, double far);
     static Matrix criarMatrizProjecaoPerspectiva(double fov, double aspect, double near, double far);
+
+    // O compilador aceita isso pois sabe que Ponto é uma classe (pela declaração acima)
+    static Matrix criarMatrizSombra(const Ponto& luz, double yPlano);
 
     double& at(int row, int col);
     const double& at(int row, int col) const;
@@ -26,7 +35,7 @@ public:
 
 protected:
     int rows, cols;
-    std::vector<std::vector<double>> data;
+    double data[4][4];
 };
 
 #endif // MATRIX_H

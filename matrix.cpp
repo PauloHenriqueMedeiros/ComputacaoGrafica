@@ -1,20 +1,26 @@
 #include "matrix.h"
-#include <stdexcept>
-#include <cmath>
+#include "ponto.h" // <--- CORREÇÃO: Incluímos aqui para ter acesso aos métodos de Ponto
+#include <cstring>
+#include <cmath> // Garantir que abs e outras funcoes matematicas existam
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
 Matrix::Matrix() : rows(4), cols(4) {
-    data.resize(4, std::vector<double>(4, 0.0));
     for (int i = 0; i < 4; ++i) {
-        data[i][i] = 1.0;
+        for (int j = 0; j < 4; ++j) {
+            data[i][j] = (i == j) ? 1.0 : 0.0;
+        }
     }
 }
 
 Matrix::Matrix(int r, int c) : rows(r), cols(c) {
-    data.resize(r, std::vector<double>(c, 0.0));
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            data[i][j] = 0.0;
+        }
+    }
 }
 
 Matrix Matrix::operator*(const Matrix& other) const {
@@ -28,7 +34,7 @@ Matrix Matrix::operator*(const Matrix& other) const {
             for (int k = 0; k < this->cols; ++k) {
                 sum += this->data[i][k] * other.data[k][j];
             }
-            result.data[i][j] = sum;
+            result.at(i, j) = sum;
         }
     }
     return result;
@@ -89,9 +95,14 @@ Matrix Matrix::criarMatrizRotacaoZ(double anguloGraus) {
     return r;
 }
 
-Matrix Matrix::criarMatrizProjecaoOrtogonal() {
+Matrix Matrix::criarMatrizProjecaoOrtogonal(double left, double right, double bottom, double top, double near, double far) {
     Matrix p;
-    p.at(2, 2) = 0;
+    p.at(0, 0) = 2.0 / (right - left);
+    p.at(1, 1) = 2.0 / (top - bottom);
+    p.at(2, 2) = -2.0 / (far - near);
+    p.at(0, 3) = -(right + left) / (right - left);
+    p.at(1, 3) = -(top + bottom) / (top - bottom);
+    p.at(2, 3) = -(far + near) / (far - near);
     return p;
 }
 
@@ -105,7 +116,41 @@ Matrix Matrix::criarMatrizProjecaoPerspectiva(double fov, double aspect, double 
     p.at(2, 2) = (far + near) / (near - far);
     p.at(2, 3) = (2 * far * near) / (near - far);
     p.at(3, 2) = -1.0;
-    p.at(3, 3) = 0.0; // W não é 1
-
+    p.at(3, 3) = 0.0;
     return p;
+}
+
+Matrix Matrix::criarMatrizSombra(const Ponto& luz, double yPlano) {
+    Matrix m(4, 4);
+
+    double Lx = luz.getX();
+    double Ly = luz.getY();
+    double Lz = luz.getZ();
+
+    if (std::abs(Ly) < 0.001) Ly = 0.001;
+
+    m.at(0, 0) = Ly;
+    m.at(0, 1) = -Lx;
+    m.at(0, 2) = 0;
+    m.at(0, 3) = 0;
+
+    m.at(1, 0) = 0;
+    m.at(1, 1) = 0;
+    m.at(1, 2) = 0;
+    m.at(1, 3) = 0;
+
+    m.at(2, 0) = 0;
+    m.at(2, 1) = -Lz;
+    m.at(2, 2) = Ly;
+    m.at(2, 3) = 0;
+
+    m.at(3, 0) = 0;
+    m.at(3, 1) = -1;
+    m.at(3, 2) = 0;
+    m.at(3, 3) = Ly;
+
+    Matrix T_down = Matrix::criarMatrizTranslacao(0, -yPlano, 0);
+    Matrix T_up = Matrix::criarMatrizTranslacao(0, yPlano, 0);
+
+    return T_up * m * T_down;
 }

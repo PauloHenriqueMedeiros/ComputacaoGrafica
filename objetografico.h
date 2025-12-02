@@ -4,6 +4,7 @@
 #include <QString>
 #include <QVector>
 #include "ponto.h"
+#include "matrix.h"
 
 class QPainter;
 
@@ -28,11 +29,17 @@ public:
     void setVisivel(bool visivel);
     bool isVisivel() const;
 
+    // Novo método para acessar a matriz de modelo acumulada
+    Matrix getMatrizModel() const;
+
 protected:
     QString nome;
     TipoObjeto tipo;
     QVector<Ponto> pontos;
     bool visivel;
+
+    // Matriz que guarda a posição/rotação/escala do objeto no mundo
+    Matrix matrizModel;
 };
 
 class PontoGrafico : public ObjetoGrafico {
